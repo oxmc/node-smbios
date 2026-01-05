@@ -9,8 +9,7 @@
     "clean": "node-gyp clean",
     "test": "node example.js",
     "package": "node-pre-gyp package",
-    "publish-binary": "node-pre-gyp-github publish",
-    "prepublishOnly": "npm run build"
+    "publish-binary": "node-pre-gyp-github publish"
   },
   "binary": {
     "module_name": "smbios",
