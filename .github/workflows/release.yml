@@ -24,13 +24,12 @@ jobs:
           generate_release_notes: true
 
   build:
-    name: Build on ${{ matrix.os }} - Node ${{ matrix.node }}
+    name: Build on ${{ matrix.os }} - Node 20
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [18, 20, 22]
     
     steps:
       - name: Checkout code
@@ -55,7 +54,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 20
 
       - name: Install dependencies
         run: npm install --ignore-scripts
