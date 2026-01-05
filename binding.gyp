@@ -10,10 +10,12 @@
         "src/smbios_common.cpp"
       ],
       "include_dirs": [
-        "<!@(node -p \"require('node-addon-api').include\")",
-        "<!@(node -p \"require('@mapbox/node-pre-gyp').include\")"
+        "<!@(node -p \"require('node-addon-api').include\")"
       ],
-      "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
+      "defines": [ 
+        "NAPI_DISABLE_CPP_EXCEPTIONS",
+        "NAPI_VERSION=<(napi_build_version)"
+      ],
       "conditions": [
         ["OS=='win'", {
           "sources": [ "src/windows/smbios_windows.cpp" ],
