@@ -13,7 +13,7 @@
   },
   "binary": {
     "module_name": "smbios",
-    "module_path": "./build/Release/",
+    "module_path": "./build/Release/napi-v{napi_build_version}",
     "package_name": "{module_name}-v{version}-napi-v{napi_build_version}-{platform}-{arch}.tar.gz",
     "host": "https://github.com/oxmc/node-smbios/releases/download/",
     "remote_path": "v{version}",
