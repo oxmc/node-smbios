@@ -13,10 +13,12 @@
   },
   "binary": {
     "module_name": "smbios",
-    "module_path": "./build/Release/",
-    "package_name": "{module_name}-v{version}-{node_abi}-{platform}-{arch}.tar.gz",
-    "host": "https://github.com/oxmc/node-smbios/releases/download/",
-    "remote_path": "v{version}"
+    "module_path": "./build/Release",
+    "host": "https://github.com/oxmc/node-smbios/releases/download/v{version}",
+    "remote_path": "{name}-v{version}-napi-v{napi_version}-{platform}-{arch}.tar.gz",
+    "napi_versions": [
+      9
+    ]
   },
   "keywords": [
     "smbios",
