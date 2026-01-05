@@ -12,6 +12,7 @@ build/Release/*.tlog
 build/Release/*.iobj
 build/Release/*.ipdb
 build/Release/*.log
+dist/
 
 # Test files
 test/

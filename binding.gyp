@@ -2,7 +2,7 @@
   "targets": [
     {
       "target_name": "smbios",
-      "product_dir": "<(module_root_dir)/build/Release/napi-v<(napi_build_version)",
+      "product_dir": "<(module_path)",
       "cflags!": [ "-fno-exceptions" ],
       "cflags_cc!": [ "-fno-exceptions" ],
       "cflags_cc": [ "-std=c++17" ],
