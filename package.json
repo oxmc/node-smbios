@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "install": "node-pre-gyp install --fallback-to-build",
-    "build": "node-gyp rebuild",
+    "build": "node-pre-gyp rebuild",
     "clean": "node-gyp clean",
     "test": "node example.js",
     "package": "node-pre-gyp package",
