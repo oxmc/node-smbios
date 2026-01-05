@@ -1,5 +1,5 @@
 {
-  "name": "node-smbios",
+  "name": "@oxmc/node-smbios",
   "version": "1.0.0",
   "description": "A Node.js module designed to retrieve detailed system and hardware information from SMBIOS.",
   "main": "index.js",
