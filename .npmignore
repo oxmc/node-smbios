@@ -17,6 +17,7 @@ dist/
 # Test files
 test/
 *.test.js
+example.js
 
 # Git
 .git/

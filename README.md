@@ -1,6 +1,6 @@
 # node-smbios
 
-[![npm version](https://badge.fury.io/js/node-smbios.svg)](https://www.npmjs.com/package/node-smbios)
+[![npm version](https://badge.fury.io/js/%40oxmc%2Fnode-smbios.svg)](https://www.npmjs.com/package/%40oxmc%2Fnode-smbios)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Cross-platform Node.js native addon for reading SMBIOS (System Management BIOS) / DMI (Desktop Management Interface) hardware information.
@@ -17,7 +17,7 @@ Cross-platform Node.js native addon for reading SMBIOS (System Management BIOS) 
 ## Installation
 
 ```bash
-npm install node-smbios
+npm install @oxmc/node-smbios
 ```
 
 ### How Installation Works
@@ -26,7 +26,7 @@ The package uses **prebuilt native binaries** for most users:
 
 1. **First**: Attempts to download a prebuilt binary from [GitHub Releases](https://github.com/oxmc/node-smbios/releases)
    - Binaries are available for common platforms: Windows, macOS, Linux
-   - Supports Node.js versions: 16, 18, 20, 22
+   - Supports N-API Versions: 3, 4, 5, 6, 7, 8, 9
    - Covers architectures: x64, arm64
 
 2. **Fallback**: If no prebuilt binary is available, it compiles from source
@@ -125,7 +125,7 @@ sudo pacman -S base-devel python
 After installation, verify it works:
 
 ```bash
-node -e "const smbios = require('node-smbios'); console.log(smbios.getSystemInfo());"
+node -e "const smbios = require('@oxmc/node-smbios'); console.log(smbios.getSystemInfo());"
 ```
 
 ### Forcing Source Build
@@ -133,13 +133,13 @@ node -e "const smbios = require('node-smbios'); console.log(smbios.getSystemInfo
 If you want to compile from source instead of using prebuilt binaries:
 
 ```bash
-npm install node-smbios --build-from-source
+npm install @oxmc/node-smbios --build-from-source
 ```
 
 ## Usage
 
 ```javascript
-const smbios = require('node-smbios');
+const smbios = require('@oxmc/node-smbios');
 
 // Get BIOS information
 const biosInfo = smbios.getBiosInfo();
@@ -305,7 +305,7 @@ This runs `node-gyp rebuild` which:
    - `src/smbios_common.cpp` - Common utilities
    - Platform-specific file: `src/windows/smbios_windows.cpp`, `src/mac/smbios_macos.cpp`, or `src/linux/smbios_linux.cpp`
 3. Links with platform-specific libraries
-4. Outputs `build/Release/smbios.node` (the compiled addon)
+4. Outputs the compiled addon for all napi versions supported (/lib/{platform}-{arch}-napi-v{napi_version}/smbios.node) ex: /lib/win32-x64-napi-v9/smbios.node
 
 ### 4. Run Tests
 
@@ -417,8 +417,6 @@ This project uses automated releases via GitHub Actions. To create a new release
    - Build native binaries for all supported platforms (Windows, macOS, Linux)
    - Upload binaries to GitHub Releases
    - Publish the package to npm
-
-See [.github/RELEASE.md](.github/RELEASE.md) for more details on the release process.
 
 ## Troubleshooting
 

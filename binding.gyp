@@ -2,7 +2,6 @@
   "targets": [
     {
       "target_name": "smbios",
-      "product_dir": "<(module_path)",
       "cflags!": [ "-fno-exceptions" ],
       "cflags_cc!": [ "-fno-exceptions" ],
       "cflags_cc": [ "-std=c++17" ],
@@ -13,9 +12,11 @@
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"
       ],
+      "dependencies": [
+        "<!(node -p \"require('node-addon-api').gyp\")"
+      ],
       "defines": [ 
-        "NAPI_DISABLE_CPP_EXCEPTIONS",
-        "NAPI_VERSION=<(napi_build_version)"
+        "NAPI_DISABLE_CPP_EXCEPTIONS"
       ],
       "conditions": [
         ["OS=='win'", {
@@ -46,6 +47,17 @@
         ["OS=='linux'", {
           "sources": [ "src/linux/smbios_linux.cpp" ]
         }]
+      ]
+    },
+    {
+      "target_name": "action_after_build",
+      "type": "none",
+      "dependencies": [ "smbios" ],
+      "copies": [
+        {
+          "files": [ "<(PRODUCT_DIR)/smbios.node" ],
+          "destination": "<(module_path)"
+        }
       ]
     }
   ]

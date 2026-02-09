@@ -24,12 +24,12 @@ jobs:
           generate_release_notes: true
 
   build:
-    name: Build on ${{ matrix.os }} - Node 20
+    name: Build ${{ matrix.os }}
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-15-intel, macos-15]
     
     steps:
       - name: Checkout code
@@ -39,7 +39,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 python3-pip
+          sudo apt-get install -y build-essential python3
 
       - name: Setup Python (Windows/macOS)
         if: runner.os != 'Linux'
@@ -47,28 +47,24 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Python setuptools (macOS)
-        if: runner.os == 'macOS'
-        run: pip3 install setuptools
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
       - name: Install dependencies
         run: npm install --ignore-scripts
 
-      - name: Build native addon
-        run: npm run build
+      - name: Build all NAPI versions
+        run: npx node-pre-gyp rebuild --build-from-source
 
-      - name: Package binary
-        run: npm run package
+      - name: Package all NAPI versions
+        run: npx node-pre-gyp package
 
-      - name: Upload binary to release
+      - name: Upload binaries to GitHub Release
         env:
           NODE_PRE_GYP_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run publish-binary
+        run: npx node-pre-gyp-github publish
 
   publish-npm:
     name: Publish to npm
@@ -78,11 +74,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
