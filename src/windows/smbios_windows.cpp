@@ -7,22 +7,14 @@
 #include <comdef.h>
 #include <Wbemidl.h>
 #include <string>
+#include <vector>
 
 #pragma comment(lib, "wbemuuid.lib")
 
 namespace smbios {
 
-static std::string WideToUtf8(const wchar_t* wstr) {
-    if (!wstr) return "";
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
-    if (len <= 0) return "";
-    std::string result(len - 1, '\0');
-    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], len, NULL, NULL);
-    return result;
-}
-
 /**
- * Lightweight WMI query class - no COM init/uninit, connection reuse
+ * Helper class for WMI queries
  */
 class WMIQuery {
 private:
@@ -32,19 +24,38 @@ private:
 
 public:
     WMIQuery() : pLoc(nullptr), pSvc(nullptr), initialized(false) {
-        // Don't call CoInitialize - Node.js already initialized COM
-        // Don't call CoInitializeSecurity - it's already set or will fail with RPC_E_TOO_LATE
-        
-        HRESULT hres = CoCreateInstance(
+        // Initialize COM
+        HRESULT hres = CoInitializeEx(0, COINIT_MULTITHREADED);
+        if (FAILED(hres) && hres != RPC_E_CHANGED_MODE) {
+            return;
+        }
+
+        // Set general COM security levels
+        hres = CoInitializeSecurity(
+            NULL, -1, NULL, NULL,
+            RPC_C_AUTHN_LEVEL_DEFAULT,
+            RPC_C_IMP_LEVEL_IMPERSONATE,
+            NULL, EOAC_NONE, NULL
+        );
+
+        if (FAILED(hres) && hres != RPC_E_TOO_LATE) {
+            CoUninitialize();
+            return;
+        }
+
+        // Obtain the initial locator to WMI
+        hres = CoCreateInstance(
             CLSID_WbemLocator, 0,
             CLSCTX_INPROC_SERVER,
             IID_IWbemLocator, (LPVOID*)&pLoc
         );
 
         if (FAILED(hres)) {
+            CoUninitialize();
             return;
         }
 
+        // Connect to WMI
         hres = pLoc->ConnectServer(
             _bstr_t(L"ROOT\\CIMV2"), NULL, NULL, 0,
             NULL, 0, 0, &pSvc
@@ -52,10 +63,11 @@ public:
 
         if (FAILED(hres)) {
             pLoc->Release();
-            pLoc = nullptr;
+            CoUninitialize();
             return;
         }
 
+        // Set security levels on the proxy
         hres = CoSetProxyBlanket(
             pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL,
             RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE,
@@ -65,8 +77,7 @@ public:
         if (FAILED(hres)) {
             pSvc->Release();
             pLoc->Release();
-            pSvc = nullptr;
-            pLoc = nullptr;
+            CoUninitialize();
             return;
         }
 
@@ -74,15 +85,9 @@ public:
     }
 
     ~WMIQuery() {
-        if (pSvc) {
-            pSvc->Release();
-            pSvc = nullptr;
-        }
-        if (pLoc) {
-            pLoc->Release();
-            pLoc = nullptr;
-        }
-        // Don't call CoUninitialize - we didn't initialize COM
+        if (pSvc) pSvc->Release();
+        if (pLoc) pLoc->Release();
+        CoUninitialize();
     }
 
     std::string QueryProperty(const wchar_t* wmiClass, const wchar_t* property) {
@@ -93,7 +98,7 @@ public:
         query += L" FROM ";
         query += wmiClass;
 
-        IEnumWbemClassObject* pEnumerator = nullptr;
+        IEnumWbemClassObject* pEnumerator = NULL;
         HRESULT hres = pSvc->ExecQuery(
             bstr_t("WQL"),
             bstr_t(query.c_str()),
@@ -101,44 +106,40 @@ public:
             NULL, &pEnumerator
         );
 
-        if (FAILED(hres) || !pEnumerator) {
+        if (FAILED(hres)) {
             return "";
         }
 
-        IWbemClassObject* pclsObj = nullptr;
+        IWbemClassObject* pclsObj = NULL;
         ULONG uReturn = 0;
         std::string result;
 
-        hres = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
-        
-        if (SUCCEEDED(hres) && uReturn == 1 && pclsObj) {
+        while (pEnumerator) {
+            HRESULT hr = pEnumerator->Next(WBEM_INFINITE, 1, &pclsObj, &uReturn);
+            if (0 == uReturn) {
+                break;
+            }
+
             VARIANT vtProp;
             VariantInit(&vtProp);
+            hr = pclsObj->Get(property, 0, &vtProp, 0, 0);
             
-            hres = pclsObj->Get(property, 0, &vtProp, 0, 0);
-            
-            if (SUCCEEDED(hres)) {
-                if (vtProp.vt == VT_BSTR && vtProp.bstrVal) {
-                    result = WideToUtf8(vtProp.bstrVal);
-                } else if (vtProp.vt == VT_I4) {
+            if (SUCCEEDED(hr)) {
+                if (vtProp.vt == VT_BSTR) {
+                    _bstr_t bstr(vtProp.bstrVal);
+                    result = (char*)bstr;
+                } else if (vtProp.vt == VT_I4 || vtProp.vt == VT_UI4) {
                     result = std::to_string(vtProp.lVal);
-                } else if (vtProp.vt == VT_UI4) {
-                    result = std::to_string(vtProp.ulVal);
-                } else if (vtProp.vt == VT_I2) {
+                } else if (vtProp.vt == VT_I2 || vtProp.vt == VT_UI2) {
                     result = std::to_string(vtProp.iVal);
-                } else if (vtProp.vt == VT_UI2) {
-                    result = std::to_string(vtProp.uiVal);
                 } else if (vtProp.vt == VT_UI1) {
                     result = std::to_string(vtProp.bVal);
-                } else if (vtProp.vt == VT_I8) {
-                    result = std::to_string(vtProp.llVal);
-                } else if (vtProp.vt == VT_UI8) {
-                    result = std::to_string(vtProp.ullVal);
                 }
             }
             
             VariantClear(&vtProp);
             pclsObj->Release();
+            break; // Get only first result
         }
 
         pEnumerator->Release();
@@ -167,6 +168,7 @@ SystemInfo GetSystemInfo() {
     info.uuid = wmi.QueryProperty(L"Win32_ComputerSystemProduct", L"UUID");
     info.wakeUpType = wmi.QueryProperty(L"Win32_ComputerSystem", L"WakeUpType");
     
+    // Try to get serial number from ComputerSystemProduct
     std::string serial = wmi.QueryProperty(L"Win32_ComputerSystemProduct", L"IdentifyingNumber");
     if (serial.empty() || serial == "To Be Filled By O.E.M.") {
         serial = wmi.QueryProperty(L"Win32_BIOS", L"SerialNumber");
@@ -220,6 +222,7 @@ MemoryInfo GetMemoryInfo() {
     info.maxCapacity = wmi.QueryProperty(L"Win32_PhysicalMemoryArray", L"MaxCapacity");
     info.memoryDevices = wmi.QueryProperty(L"Win32_PhysicalMemoryArray", L"MemoryDevices");
     
+    // Get available memory from OS
     MEMORYSTATUSEX memStatus;
     memStatus.dwLength = sizeof(memStatus);
     if (GlobalMemoryStatusEx(&memStatus)) {
