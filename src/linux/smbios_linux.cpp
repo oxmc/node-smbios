@@ -24,7 +24,13 @@ BiosInfo GetBiosInfo() {
     info.vendor = ReadDMI("bios_vendor");
     info.version = ReadDMI("bios_version");
     info.releaseDate = ReadDMI("bios_date");
-    info.biosCharacteristics = ReadDMI("modalias");
+    // Note: the BIOS Characteristics bitfield (SMBIOS type 0, offset 0x0A) is
+    // not exposed via /sys/class/dmi/id/ - it requires parsing the binary
+    // SMBIOS table (/sys/firmware/dmi/tables/DMI), which is out of scope for
+    // this sysfs-only implementation. "modalias" is a *different* value
+    // (a module-matching alias string) and was previously misassigned here,
+    // so this field is left empty rather than reporting misleading data.
+    info.biosCharacteristics = "";
     
     return info;
 }
@@ -38,7 +44,12 @@ SystemInfo GetSystemInfo() {
     info.uuid = ReadDMI("product_uuid");
     info.skuNumber = ReadDMI("product_sku");
     info.family = ReadDMI("product_family");
-    info.wakeUpType = ReadDMI("chassis_type");
+    // Note: Wake-up Type (SMBIOS type 1, offset 0x18) is not exposed via
+    // /sys/class/dmi/id/ - it requires binary SMBIOS table parsing, which is
+    // out of scope here. This previously read "chassis_type" by mistake,
+    // silently reporting an unrelated value (the chassis form factor) as the
+    // wake-up type. Left empty since there is no simple sysfs source for it.
+    info.wakeUpType = "";
     
     // Clean up common placeholder values
     if (info.serialNumber == "To Be Filled By O.E.M." || 
@@ -63,7 +74,13 @@ BoardInfo GetBoardInfo() {
     info.version = ReadDMI("board_version");
     info.serialNumber = ReadDMI("board_serial");
     info.assetTag = ReadDMI("board_asset_tag");
-    info.locationInChassis = ReadDMI("chassis_vendor");
+    // Note: Location In Chassis (SMBIOS type 2, offset 0x0A) is not exposed
+    // via /sys/class/dmi/id/ - it requires binary SMBIOS table parsing, which
+    // is out of scope here. This previously read "chassis_vendor" by
+    // mistake, silently reporting the chassis manufacturer name as if it
+    // were a physical location string. Left empty since there is no simple
+    // sysfs source for it.
+    info.locationInChassis = "";
     
     // Clean up common placeholder values
     if (info.serialNumber == "To Be Filled By O.E.M." || 
@@ -176,12 +193,35 @@ MemoryInfo GetMemoryInfo() {
             } else if (line.find("SwapTotal") != std::string::npos) {
                 size_t pos = line.find(":");
                 if (pos != std::string::npos) {
-                    info.totalVirtualMemory = TrimString(line.substr(pos + 1));
+                    std::string value = TrimString(line.substr(pos + 1));
+                    // Strip trailing " kB" unit suffix before parsing
+                    size_t spacePos = value.find(' ');
+                    if (spacePos != std::string::npos) {
+                        value = value.substr(0, spacePos);
+                    }
+                    // Convert from KB to bytes, to match totalPhysicalMemory's units
+                    try {
+                        size_t kb = std::stoull(value);
+                        info.totalVirtualMemory = std::to_string(kb * 1024);
+                    } catch (...) {
+                        info.totalVirtualMemory = value;
+                    }
                 }
             } else if (line.find("SwapFree") != std::string::npos) {
                 size_t pos = line.find(":");
                 if (pos != std::string::npos) {
-                    info.availableVirtualMemory = TrimString(line.substr(pos + 1));
+                    std::string value = TrimString(line.substr(pos + 1));
+                    size_t spacePos = value.find(' ');
+                    if (spacePos != std::string::npos) {
+                        value = value.substr(0, spacePos);
+                    }
+                    // Convert from KB to bytes, to match availablePhysicalMemory's units
+                    try {
+                        size_t kb = std::stoull(value);
+                        info.availableVirtualMemory = std::to_string(kb * 1024);
+                    } catch (...) {
+                        info.availableVirtualMemory = value;
+                    }
                 }
             }
         }
