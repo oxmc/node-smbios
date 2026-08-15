@@ -28,8 +28,11 @@ jobs:
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15-intel, macos-15]
+        # See ci.yml: windows-latest currently ships a VS release node-gyp
+        # can't parse, so it's pinned to windows-2022 here too.
+        os: [ubuntu-latest, windows-2022, macos-15-intel, macos-15]
     
     steps:
       - name: Checkout code

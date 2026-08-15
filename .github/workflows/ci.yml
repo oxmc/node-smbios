@@ -11,8 +11,14 @@ jobs:
     name: Test on ${{ matrix.os }} - Node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # windows-latest currently aliases to an image shipping a Visual
+        # Studio release node-gyp can't parse ("unknown version 'undefined'
+        # found at .../Visual Studio/18/..."), crashing every Windows job.
+        # Pinned to windows-2022, a distinct still-supported runner label,
+        # to sidestep it (see oxmc/node-gpu for the same fix + root cause).
+        os: [ubuntu-latest, windows-2022, macos-latest]
         node: [18, 20, 22]
     
     steps:
