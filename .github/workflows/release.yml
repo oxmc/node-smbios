@@ -73,7 +73,11 @@ jobs:
     name: Publish to npm
     needs: build
     runs-on: ubuntu-latest
-    
+    permissions:
+      # OIDC token for npm trusted publishing (no NPM_TOKEN secret needed).
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,10 +85,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Trusted publishing needs Node >=22.14.0 (npm version itself is
+          # pinned separately below).
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Update npm
+        # Trusted publishing requires npm >=11.5.1; don't rely on whatever
+        # ships bundled with the Node version above.
+        run: npm install -g npm@latest
+
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
